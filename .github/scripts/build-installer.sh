@@ -35,6 +35,7 @@ build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info")"
 bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$info")"
 executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$info")"
 archs="$(lipo -archs "$app/Contents/MacOS/$executable")"
+min_os="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$info")"
 pkg="$out_dir/DataShift-$version-$build.pkg"
 
 # pkgbuild before macOS 27 marks bundles relocatable by default. Turn that off so
@@ -60,7 +61,15 @@ echo "Built $pkg ($archs)"
 echo "SHA-256: $sha256"
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-  echo "pkg=$pkg" >> "$GITHUB_OUTPUT"
+  {
+    echo "pkg=$pkg"
+    echo "name=$(basename "$pkg")"
+    echo "version=$version"
+    echo "build=$build"
+    echo "sha256=$sha256"
+    echo "min_os=$min_os"
+    echo "archs=$archs"
+  } >> "$GITHUB_OUTPUT"
 fi
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   cat >> "$GITHUB_STEP_SUMMARY" <<EOF

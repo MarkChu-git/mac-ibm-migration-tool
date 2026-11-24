@@ -17,6 +17,13 @@ jobs:
   package:
     runs-on: macos-26
     timeout-minutes: 45
+    outputs:
+      name: ${{ steps.package.outputs.name }}
+      version: ${{ steps.package.outputs.version }}
+      build: ${{ steps.package.outputs.build }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+      min_os: ${{ steps.package.outputs.min_os }}
+      archs: ${{ steps.package.outputs.archs }}
     steps:
       - name: Xcode Setup
         uses: maxim-lobanov/setup-xcode@v1.7.0
@@ -35,3 +42,32 @@ jobs:
           archive: false
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v7
+      - name: Download installer
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.package.outputs.name }}
+          path: dist
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PKG_NAME: ${{ needs.package.outputs.name }}
+          VERSION: ${{ needs.package.outputs.version }}
+          BUILD: ${{ needs.package.outputs.build }}
+          SHA256: ${{ needs.package.outputs.sha256 }}
+          MIN_OS: ${{ needs.package.outputs.min_os }}
+          ARCHS: ${{ needs.package.outputs.archs }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/scripts/publish-release.sh "dist/$PKG_NAME"
